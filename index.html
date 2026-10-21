@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>首页</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-page="home">
+<div class="nav">
+  <a href="index.html" data-page="home">首页</a>
+  <a href="commission.html" data-page="commission">约稿条</a>
+  <a href="works.html" data-page="works">作品</a>
+  <a href="game.html" data-page="game">正在做游戏</a>
+  <a href="about.html" data-page="about">关于我</a>
+</div>
+
+<div class="page">
+  <div class="card">
+    <div class="home-hero">
+      <img id="homeBig" alt="最近作品">
+      <div class="home-hero-cover"></div>
+      <div class="home-hero-text">
+        <h1 id="homeName" contenteditable="true"></h1>
+        <p id="homeSlogan" contenteditable="true"></p>
+      </div>
+    </div>
+    <div class="home-thumbs" id="homeThumbs"></div>
+    <div class="home-actions">
+      <button class="home-btn commission" onclick="location.href='commission.html'">
+        <div class="hb-title">约稿条</div>
+        <div class="hb-sub">接稿类型 · 档期 · 联系方式</div>
+      </button>
+      <button class="home-btn game" onclick="location.href='game.html'">
+        <div class="hb-title">正在做游戏</div>
+        <div class="hb-sub">开发中</div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<button class="save-data-btn" id="saveDataBtn">💾 保存到 data.js</button>
+<div class="save-badge" id="saveBadge">已自动保存</div>
+
+<script src="data.js"></script>
+<script src="common.js"></script>
+<script>
+(function(){
+  var d = CS.getData();
+  CS.initEditable(d);
+  CS.initNav();
+  CS.initSaveButton();
+
+  var h = d.home;
+  var big = document.getElementById('homeBig');
+  var name = document.getElementById('homeName');
+  var slogan = document.getElementById('homeSlogan');
+
+  name.textContent = h.name || '';
+  slogan.textContent = h.slogan || '';
+  big.src = h.bigImg || CS.ph('最近的作品',1200,615,'#ffe0ee','#dceaff');
+
+  if(CS.editable){
+    big.onclick = function(){
+      CS.pickAndCrop({aspect:1200/615,outW:1200,outH:615,quality:.82}).then(function(data){
+        if(!data) return;
+        h.bigImg = data; big.src = data; CS.markDirty(d);
+      });
+    };
+    name.addEventListener('blur', function(){ h.name = CS.txt(name); CS.markDirty(d); });
+    slogan.addEventListener('blur', function(){ h.slogan = CS.txt(slogan); CS.markDirty(d); });
+  }
+
+  function renderSmall(){
+    var wrap = document.getElementById('homeThumbs');
+    wrap.innerHTML = '';
+    h.smallImgs = h.smallImgs || [];
+    h.smallImgs.forEach(function(src, i){
+      var div = document.createElement('div');
+      div.className = 'home-thumb';
+      var img = document.createElement('img');
+      img.src = src || CS.ph('新图',500,375,'#ffd6e8','#c9b6ff');
+      if(CS.editable){
+        img.onclick = function(){
+          CS.pickAndCrop({aspect:4/3,outW:500,outH:375,quality:.82}).then(function(data){
+            if(!data) return;
+            h.smallImgs[i] = data; img.src = data; CS.markDirty(d);
+          });
+        };
+        var del = document.createElement('button');
+        del.className = 'del'; del.textContent = '×';
+        del.onclick = function(e){
+          e.stopPropagation();
+          h.smallImgs.splice(i,1);
+          CS.markDirty(d); renderSmall();
+        };
+        div.appendChild(del);
+      }
+      div.appendChild(img);
+      wrap.appendChild(div);
+    });
+    if(CS.editable){
+      var add = document.createElement('button');
+      add.className = 'home-thumb add'; add.textContent = '＋';
+      add.onclick = function(){
+        CS.pickAndCrop({aspect:4/3,outW:500,outH:375,quality:.82}).then(function(data){
+          if(!data) return;
+          h.smallImgs = h.smallImgs || [];
+          h.smallImgs.push(data);
+          CS.markDirty(d); renderSmall();
+        });
+      };
+      wrap.appendChild(add);
+    }
+  }
+  renderSmall();
+})();
+</script>
+</body>
+</html>

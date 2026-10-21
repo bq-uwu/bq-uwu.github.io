@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>正在做游戏</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-page="game">
+<div class="nav">
+  <a href="index.html" data-page="home">首页</a>
+  <a href="commission.html" data-page="commission">约稿条</a>
+  <a href="works.html" data-page="works">作品</a>
+  <a href="game.html" data-page="game">正在做游戏</a>
+  <a href="about.html" data-page="about">关于我</a>
+</div>
+
+<div class="page">
+  <div class="card">
+    <div class="game-hero">
+      <img id="gameBig" alt="游戏主视觉">
+      <div class="game-hero-cover"></div>
+      <div class="game-hero-text">
+        <h1 id="gameTitle" contenteditable="true"></h1>
+        <p id="gameSubtitle" contenteditable="true"></p>
+      </div>
+    </div>
+    <div class="game-body">
+      <div class="game-desc" id="gameDesc" contenteditable="true"></div>
+      <div class="game-gallery" id="gameGallery"></div>
+    </div>
+  </div>
+</div>
+
+<button class="save-data-btn" id="saveDataBtn">💾 保存到 data.js</button>
+<div class="save-badge" id="saveBadge">已自动保存</div>
+
+<script src="data.js"></script>
+<script src="common.js"></script>
+<script>
+(function(){
+  var d = CS.getData();
+  CS.initEditable(d);
+  CS.initNav();
+  CS.initSaveButton();
+
+  var g = d.game;
+  var big = document.getElementById('gameBig');
+  var title = document.getElementById('gameTitle');
+  var sub = document.getElementById('gameSubtitle');
+  var desc = document.getElementById('gameDesc');
+
+  title.textContent = g.title || '';
+  sub.textContent = g.subtitle || '';
+  desc.textContent = g.desc || '';
+  big.src = g.bigImg || CS.ph('游戏主视觉',1000,437,'#dcecff','#e3f9f1');
+
+  if(CS.editable){
+    big.onclick = function(){
+      CS.pickAndCrop({aspect:1000/437,outW:1000,outH:437,quality:.82}).then(function(data){
+        if(!data) return;
+        g.bigImg = data; big.src = data; CS.markDirty(d);
+      });
+    };
+    title.addEventListener('blur', function(){ g.title = CS.txt(title); CS.markDirty(d); });
+    sub.addEventListener('blur', function(){ g.subtitle = CS.txt(sub); CS.markDirty(d); });
+    desc.addEventListener('blur', function(){ g.desc = desc.innerText; CS.markDirty(d); });
+  }
+
+  function renderShots(){
+    var wrap = document.getElementById('gameGallery');
+    wrap.innerHTML = '';
+    g.shots = g.shots || [];
+    g.shots.forEach(function(src, i){
+      var box = document.createElement('div');
+      box.className = 'game-shot';
+      var img = document.createElement('img');
+      img.src = src;
+      img.onclick = function(){
+        CS.openViewer(g.shots, i, {
+          editable: CS.editable,
+          cropRule: {aspect:4/3,outW:600,outH:450,quality:.84},
+          onChange: function(newImgs){ g.shots = newImgs.slice(); CS.markDirty(d); renderShots(); }
+        });
+      };
+      box.appendChild(img);
+      if(CS.editable){
+        var del = document.createElement('button');
+        del.className = 'del'; del.textContent = '×';
+        del.onclick = function(e){
+          e.stopPropagation();
+          g.shots.splice(i, 1);
+          CS.markDirty(d); renderShots();
+        };
+        box.appendChild(del);
+      }
+      wrap.appendChild(box);
+    });
+    if(CS.editable){
+      var add = document.createElement('button');
+      add.className = 'game-shot add';
+      add.textContent = '＋';
+      add.onclick = function(){
+        CS.pickAndCrop({aspect:4/3,outW:600,outH:450,quality:.84}).then(function(data){
+          if(!data) return;
+          g.shots.push(data);
+          CS.markDirty(d); renderShots();
+        });
+      };
+      wrap.appendChild(add);
+    }
+  }
+  renderShots();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>约稿条</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-page="commission">
+<div class="nav">
+  <a href="index.html" data-page="home">首页</a>
+  <a href="commission.html" data-page="commission">约稿条</a>
+  <a href="works.html" data-page="works">作品</a>
+  <a href="game.html" data-page="game">正在做游戏</a>
+  <a href="about.html" data-page="about">关于我</a>
+</div>
+
+<div class="page">
+  <div class="card" id="sheet">
+    <header class="hero">
+      <div class="hero-inner">
+        <div class="avatar"><img id="avatar" alt="头像"></div>
+        <div class="hero-text">
+          <h1 class="name" id="cName" contenteditable="true"></h1>
+          <p class="slogan" id="cSlogan" contenteditable="true"></p>
+        </div>
+      </div>
+    </header>
+
+    <div class="body">
+      <section class="block">
+        <h2 class="sec-title">
+          <i class="bar"></i><span>档期日历</span>
+          <span class="sub">点击日期可编辑标记和单主</span>
+        </h2>
+        <div class="cal-toolbar">
+          <button class="cal-nav" id="calPrev">‹</button>
+          <div class="cal-range" id="calRange">—</div>
+          <button class="cal-nav" id="calNext">›</button>
+          <button class="cal-mini-btn" id="calToday">回到今天</button>
+        </div>
+        <div class="cal-months" id="calMonths"></div>
+        <div class="cal-legend" id="calLegend"></div>
+        <div class="cal-note" id="calNote" contenteditable="true"></div>
+      </section>
+
+      <section class="block">
+        <h2 class="sec-title"><i class="bar"></i><span>接稿类型 &amp; 价格</span></h2>
+        <div class="services" id="services"></div>
+        <button class="add-row edit-only" id="addService">＋ 添加一项业务</button>
+      </section>
+
+      <section class="block">
+        <h2 class="sec-title"><i class="bar"></i><span>接稿偏好</span></h2>
+        <div class="pref-grid">
+          <div class="pref-card like">
+            <div class="pref-head">✅ 喜欢的 / 擅长的</div>
+            <div class="pref-body" id="likes" contenteditable="true"></div>
+          </div>
+          <div class="pref-card dislike">
+            <div class="pref-head">🚫 不接 / 婉拒</div>
+            <div class="pref-body" id="dislikes" contenteditable="true"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="block">
+        <h2 class="sec-title"><i class="bar"></i><span>约稿流程</span></h2>
+        <div class="steps" id="flow"></div>
+        <div class="note" id="flowNote" contenteditable="true"></div>
+      </section>
+
+      <section class="block">
+        <h2 class="sec-title"><i class="bar"></i><span>联系方式</span></h2>
+        <div class="contacts" id="contacts"></div>
+        <button class="add-row edit-only" id="addContact">＋ 添加联系方式</button>
+      </section>
+    </div>
+
+    <footer class="foot" id="footer" contenteditable="true"></footer>
+  </div>
+</div>
+
+<button class="edit-float edit-only" id="editStatusBtn" type="button">⚙ 编辑标记</button>
+<button class="save-data-btn" id="saveDataBtn">💾 保存到 data.js</button>
+<div class="save-badge" id="saveBadge">已自动保存</div>
+
+<!-- 日期编辑 -->
+<div class="overlay" id="editOverlay" hidden>
+  <div class="panel">
+    <div class="panel-head"><span id="editDate">—</span><span class="hint">单主信息仅本地可见</span></div>
+    <div class="panel-body">
+      <div class="f-label">档期状态</div>
+      <div class="st-list" id="editStatusList"></div>
+      <div class="f-label">单主</div>
+      <input class="f-input" id="editClient" maxlength="18" placeholder="单主名字">
+      <div class="f-label">备注</div>
+      <input class="f-input" id="editNote" maxlength="40" placeholder="备注">
+    </div>
+    <div class="panel-foot">
+      <button class="p-btn danger" id="editClear">清除</button>
+      <button class="p-btn ghost" id="editCancel">取消</button>
+      <button class="p-btn primary" id="editSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 标记编辑 -->
+<div class="overlay" id="statusOverlay" hidden>
+  <div class="panel">
+    <div class="panel-head"><span>编辑标记类型</span><span class="hint">点色块换颜色</span></div>
+    <div class="panel-body"><div id="statusList"></div></div>
+    <div class="panel-foot">
+      <button class="p-btn ghost" id="statusAdd">＋ 添加</button>
+      <button class="p-btn ghost" id="statusCancel">取消</button>
+      <button class="p-btn primary" id="statusSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="common.js"></script>
+<script>
+(function(){
+  var d = CS.getData();
+  CS.initEditable(d);
+  CS.initNav();
+  CS.initSaveButton();
+
+  var c = d.commission;
+  var marks = c.marks || {};
+  var statuses = (c.statuses || []).map(function(s){ return { name:s.name, p:s.p }; });
+  var viewY, viewM;
+  var now = new Date();
+  viewY = now.getFullYear(); viewM = now.getMonth();
+
+  document.getElementById('cName').textContent = c.name || '';
+  document.getElementById('cSlogan').textContent = c.slogan || '';
+  document.getElementById('calNote').textContent = c.calendarNote || '';
+  document.getElementById('likes').textContent = c.likes || '';
+  document.getElementById('dislikes').textContent = c.dislikes || '';
+  document.getElementById('flowNote').textContent = c.flowNote || '';
+  document.getElementById('footer').textContent = c.footer || '';
+
+  if(CS.editable){
+    [['cName','name'],['cSlogan','slogan'],['calNote','calendarNote'],
+     ['likes','likes'],['dislikes','dislikes'],['flowNote','flowNote'],['footer','footer']].forEach(function(pair){
+      var el = document.getElementById(pair[0]);
+      el.addEventListener('blur', function(){ c[pair[1]] = CS.txt(el); CS.markDirty(d); });
+    });
+  }
+
+  var avatar = document.getElementById('avatar');
+  avatar.src = c.avatar || CS.ph('头像',200,200,'#ffb3d1','#b9a7ff');
+  if(CS.editable){
+    avatar.onclick = function(){
+      CS.pickAndCrop({aspect:1,outW:400,outH:400,quality:.88}).then(function(data){
+        if(!data) return;
+        c.avatar = data; avatar.src = data; CS.markDirty(d);
+      });
+    };
+  }
+
+  /* 流程 */
+  var flowWrap = document.getElementById('flow');
+  flowWrap.innerHTML = '';
+  (c.flowSteps || []).forEach(function(t,i){
+    var el = document.createElement('div');
+    el.className = 'step';
+    var stxt = document.createElement('div');
+    stxt.className = 'stxt';
+    stxt.textContent = t;
+    if(CS.editable){
+      stxt.contentEditable = 'true';
+      stxt.addEventListener('blur', function(){ c.flowSteps[i] = CS.txt(stxt); CS.markDirty(d); });
+    }
+    el.innerHTML = '<div class="num">' + (i+1) + '</div>';
+    el.appendChild(stxt);
+    flowWrap.appendChild(el);
+  });
+
+  /* 联系方式 */
+  function renderContacts(){
+    var wrap = document.getElementById('contacts');
+    wrap.innerHTML = '';
+    (c.contacts || []).forEach(function(item, i){
+      var card = document.createElement('div');
+      card.className = 'contact-card';
+      var k = document.createElement('span');
+      k.className = 'ct-k'; k.textContent = item.k;
+      var v = document.createElement('span');
+      v.className = 'ct-v'; v.textContent = item.v;
+      if(CS.editable){
+        k.contentEditable = 'true';
+        v.contentEditable = 'true';
+        k.addEventListener('blur', function(){ item.k = CS.txt(k); CS.markDirty(d); });
+        v.addEventListener('blur', function(){ item.v = CS.txt(v); CS.markDirty(d); });
+        var del = document.createElement('button');
+        del.className = 'ct-del'; del.textContent = '×';
+        del.onclick = function(){ c.contacts.splice(i,1); CS.markDirty(d); renderContacts(); };
+        card.appendChild(del);
+      }
+      card.appendChild(k);
+      card.appendChild(v);
+      wrap.appendChild(card);
+    });
+  }
+  renderContacts();
+  if(CS.editable){
+    document.getElementById('addContact').onclick = function(){
+      c.contacts = c.contacts || [];
+      c.contacts.push({ k:'新平台', v:'' });
+      CS.markDirty(d); renderContacts();
+    };
+  }
+
+  /* 业务 */
+  function renderServices(){
+    var wrap = document.getElementById('services');
+    wrap.innerHTML = '';
+    (c.services || []).forEach(function(svc, si){
+      var row = document.createElement('div');
+      row.className = 'service-row';
+
+      var main = document.createElement('div');
+      main.className = 'svc-main';
+
+      var top = document.createElement('div');
+      top.className = 'svc-top';
+      var nameEl = document.createElement('span');
+      nameEl.className = 'svc-name'; nameEl.textContent = svc.name;
+      var priceEl = document.createElement('span');
+      priceEl.className = 'svc-price'; priceEl.textContent = svc.price;
+      if(CS.editable){
+        nameEl.contentEditable = 'true';
+        priceEl.contentEditable = 'true';
+        nameEl.addEventListener('blur', function(){ svc.name = CS.txt(nameEl); CS.markDirty(d); });
+        priceEl.addEventListener('blur', function(){ svc.price = CS.txt(priceEl); CS.markDirty(d); });
+      }
+      top.appendChild(nameEl); top.appendChild(priceEl);
+      main.appendChild(top);
+
+      var descEl = document.createElement('div');
+      descEl.className = 'svc-desc'; descEl.textContent = svc.desc;
+      if(CS.editable){
+        descEl.contentEditable = 'true';
+        descEl.addEventListener('blur', function(){ svc.desc = descEl.innerText; CS.markDirty(d); });
+      }
+      main.appendChild(descEl);
+
+      var media = document.createElement('div');
+      media.className = 'svc-media';
+
+      /* 示例图 */
+      var demoBox = document.createElement('div');
+      demoBox.className = 'svc-box demo';
+      var demoImg = document.createElement('img');
+      demoImg.src = svc.demoImg || CS.ph('示例',600,450,'#ffd6e8','#c9b6ff');
+      if(CS.editable){
+        demoImg.onclick = function(){
+          CS.pickAndCrop({aspect:4/3,outW:600,outH:450,quality:.84}).then(function(data){
+            if(!data) return;
+            svc.demoImg = data; demoImg.src = data; CS.markDirty(d);
+          });
+        };
+      }
+      var demoLabel = document.createElement('div');
+      demoLabel.className = 'demo-label'; demoLabel.textContent = svc.demoLabel || '示例';
+      if(CS.editable){
+        demoLabel.contentEditable = 'true';
+        demoLabel.addEventListener('blur', function(){ svc.demoLabel = CS.txt(demoLabel); CS.markDirty(d); });
+      }
+      demoBox.appendChild(demoImg); demoBox.appendChild(demoLabel);
+      media.appendChild(demoBox);
+
+      /* 图集 */
+      var stackBox = document.createElement('div');
+      stackBox.className = 'svc-box';
+      var stack = document.createElement('div');
+      stack.className = 'stack';
+      var gal = svc.gallery && svc.gallery.length ? svc.gallery : [CS.ph('图集',600,450,'#cfe4ff','#ffd6f0')];
+
+      function renderStack(){
+        stack.innerHTML = '';
+        gal.slice(0,5).forEach(function(src, idx){
+          var item = document.createElement('div');
+          item.className = 'stack-item';
+          item.style.setProperty('--i', idx);
+          item.style.zIndex = String(gal.length - idx);
+          var im = document.createElement('img');
+          im.src = src;
+          im.onclick = function(e){
+            e.stopPropagation();
+            CS.openViewer(gal, idx, {
+              editable: CS.editable,
+              cropRule: {aspect:4/3,outW:600,outH:450,quality:.84},
+              onChange: function(newImgs){
+                svc.gallery = newImgs.slice();
+                CS.markDirty(d);
+                renderStack();
+              }
+            });
+          };
+          item.appendChild(im);
+          if(CS.editable){
+            var del = document.createElement('button');
+            del.className = 'del'; del.textContent = '×';
+            del.onclick = function(e){
+              e.stopPropagation();
+              gal.splice(idx, 1);
+              svc.gallery = gal;
+              CS.markDirty(d); renderStack();
+            };
+            item.appendChild(del);
+          }
+          stack.appendChild(item);
+        });
+        var tag = document.createElement('span');
+        tag.className = 'box-tag'; tag.textContent = '图集 ' + gal.length;
+        stack.appendChild(tag);
+
+        if(CS.editable && gal.length < 5){
+          var add = document.createElement('button');
+          add.className = 'stack-add'; add.textContent = '＋';
+          add.onclick = function(e){
+            e.stopPropagation();
+            CS.pickAndCrop({aspect:4/3,outW:600,outH:450,quality:.84}).then(function(data){
+              if(!data) return;
+              gal.push(data); svc.gallery = gal;
+              CS.markDirty(d); renderStack();
+            });
+          };
+          stack.appendChild(add);
+        }
+      }
+      renderStack();
+      stackBox.appendChild(stack);
+      media.appendChild(stackBox);
+
+      row.appendChild(main); row.appendChild(media);
+
+      if(CS.editable){
+        var delRow = document.createElement('button');
+        delRow.className = 'row-del'; delRow.textContent = '×';
+        delRow.onclick = function(){
+          c.services.splice(si, 1);
+          CS.markDirty(d); renderServices();
+        };
+        row.appendChild(delRow);
+      }
+      wrap.appendChild(row);
+    });
+  }
+  renderServices();
+  if(CS.editable){
+    document.getElementById('addService').onclick = function(){
+      c.services = c.services || [];
+      c.services.push({ name:'新业务', price:'¥0 起', desc:'规格 / 工期', demoImg:'', demoLabel:'示例', gallery:[] });
+      CS.markDirty(d); renderServices();
+    };
+  }
+
+  /* 日历 */
+  function findStatus(name){
+    for(var i=0;i<statuses.length;i++) if(statuses[i].name === name) return statuses[i];
+    return null;
+  }
+  function statusColor(st){
+    return CS.PALETTE[(st && st.p || 0) % CS.PALETTE.length];
+  }
+
+  function renderLegend(){
+    var legend = document.getElementById('calLegend');
+    legend.innerHTML = '';
+    statuses.forEach(function(st){
+      var col = statusColor(st);
+      var s = document.createElement('span');
+      s.innerHTML = '<span class="legend-dot" style="background:'+col.bg+';border-color:'+col.border+';box-shadow:inset 0 0 0 1px '+col.border+'"></span> '+st.name;
+      legend.appendChild(s);
+    });
+    var t = document.createElement('span');
+    t.innerHTML = '<span class="legend-dot td"></span> 今天';
+    legend.appendChild(t);
+  }
+
+  function renderCal(){
+    var wrap = document.getElementById('calMonths');
+    wrap.innerHTML = '';
+    var n = new Date();
+    var todayY = n.getFullYear(), todayM = n.getMonth(), todayD = n.getDate();
+    var t0 = new Date(todayY, todayM, todayD);
+    var details = CS.getDetails();
+
+    for(var i=0;i<3;i++){
+      var y = viewY, m = viewM + i;
+      while(m > 11){ m -= 12; y++; }
+      var box = document.createElement('div'); box.className = 'cal-month';
+      var title = document.createElement('div'); title.className = 'cal-month-title';
+      title.textContent = y + '年' + (m+1) + '月'; box.appendChild(title);
+      var grid = document.createElement('div'); grid.className = 'cal-grid';
+
+      ['日','一','二','三','四','五','六'].forEach(function(d){
+        var el = document.createElement('div'); el.className = 'cal-dow'; el.textContent = d; grid.appendChild(el);
+      });
+      var start = new Date(y,m,1).getDay();
+      var days = new Date(y,m+1,0).getDate();
+      for(var e=0;e<start;e++){
+        var emp = document.createElement('div'); emp.className = 'cal-day empty'; grid.appendChild(emp);
+      }
+      for(var d=1;d<=days;d++){
+        var key = y + '-' + CS.pad(m+1) + '-' + CS.pad(d);
+        var cell = document.createElement('div'); cell.className = 'cal-day'; cell.setAttribute('data-key', key);
+        if(new Date(y,m,d) < t0) cell.classList.add('past');
+        if(y === todayY && m === todayM && d === todayD) cell.classList.add('today');
+
+        var st = marks[key] ? findStatus(marks[key]) : null;
+        if(st){
+          var col = statusColor(st);
+          cell.style.background = col.bg;
+          cell.style.color = col.fg;
+          cell.style.borderColor = col.border;
+        }
+
+        var num = document.createElement('span');
+        num.className = 'dnum'; num.textContent = d; cell.appendChild(num);
+
+        if(details[key]){
+          var det = CS.parseDetail(details[key]);
+          if(det.client){
+            var cl = document.createElement('span');
+            cl.className = 'dclient'; cl.textContent = det.client; cell.appendChild(cl);
+          }
+        }
+        grid.appendChild(cell);
+      }
+      box.appendChild(grid); wrap.appendChild(box);
+    }
+    var ey = viewY, em = viewM + 2;
+    while(em > 11){ em -= 12; ey++; }
+    document.getElementById('calRange').textContent =
+      viewY + '年' + (viewM+1) + '月 — ' + ey + '年' + (em+1) + '月';
+    renderLegend();
+  }
+
+  document.getElementById('calPrev').onclick = function(){ viewM--; if(viewM<0){viewM=11;viewY--;} renderCal(); };
+  document.getElementById('calNext').onclick = function(){ viewM++; if(viewM>11){viewM=0;viewY++;} renderCal(); };
+  document.getElementById('calToday').onclick = function(){
+    var n = new Date(); viewY = n.getFullYear(); viewM = n.getMonth(); renderCal();
+  };
+
+  /* 日期编辑 */
+  var editOverlay = document.getElementById('editOverlay');
+  var editingKey = null;
+  var editSelected = '';
+
+  function renderEditStatusList(){
+    var wrap = document.getElementById('editStatusList');
+    wrap.innerHTML = '';
+    function mk(name){
+      var btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'st-btn';
+      btn.textContent = name || '无标记';
+      var st = name ? findStatus(name) : null;
+      if(st){
+        var col = statusColor(st);
+        btn.style.background = col.bg; btn.style.color = col.fg; btn.style.borderColor = col.border;
+      }
+      if((name || '') === (editSelected || '')) btn.classList.add('active');
+      btn.onclick = function(){ editSelected = name || ''; renderEditStatusList(); };
+      wrap.appendChild(btn);
+    }
+    mk('');
+    statuses.forEach(function(st){ mk(st.name); });
+  }
+
+  function openEdit(key){
+    if(!CS.editable) return;
+    editingKey = key;
+    editSelected = marks[key] || '';
+    var det = CS.parseDetail(CS.getDetails()[key] || '');
+    var p = key.split('-');
+    document.getElementById('editDate').textContent = p[0] + '年' + Number(p[1]) + '月' + Number(p[2]) + '日';
+    document.getElementById('editClient').value = det.client;
+    document.getElementById('editNote').value = det.note;
+    renderEditStatusList();
+    editOverlay.hidden = false;
+  }
+  function closeEdit(){ editOverlay.hidden = true; editingKey = null; }
+
+  document.getElementById('editCancel').onclick = closeEdit;
+  editOverlay.addEventListener('mousedown', function(e){ if(e.target === editOverlay) closeEdit(); });
+
+  document.getElementById('editClear').onclick = function(){
+    if(!editingKey) return;
+    delete marks[editingKey];
+    CS.setDetail(editingKey, '', '');
+    c.marks = marks;
+    CS.markDirty(d); closeEdit(); renderCal();
+  };
+  document.getElementById('editSave').onclick = function(){
+    if(!editingKey) return;
+    var client = document.getElementById('editClient').value.trim();
+    var note = document.getElementById('editNote').value.trim();
+    if(editSelected) marks[editingKey] = editSelected;
+    else delete marks[editingKey];
+    CS.setDetail(editingKey, client, note);
+    c.marks = marks;
+    CS.markDirty(d); closeEdit(); renderCal();
+  };
+
+  document.getElementById('calMonths').addEventListener('click', function(e){
+    var cell = e.target.closest('.cal-day');
+    if(!cell || cell.classList.contains('empty')) return;
+    openEdit(cell.getAttribute('data-key'));
+  });
+
+  /* 标记编辑 */
+  var statusOverlay = document.getElementById('statusOverlay');
+  var tempStatuses = null;
+
+  function renderStatusList(){
+    var wrap = document.getElementById('statusList');
+    wrap.innerHTML = '';
+    tempStatuses.forEach(function(st, idx){
+      var row = document.createElement('div');
+      row.className = 'status-row';
+
+      var swatch = document.createElement('button');
+      swatch.type = 'button'; swatch.className = 'status-swatch';
+      var col = CS.PALETTE[st.p % CS.PALETTE.length];
+      swatch.style.background = col.bg;
+      swatch.style.color = col.fg;
+      swatch.style.borderColor = col.border;
+      swatch.textContent = '●';
+      swatch.onclick = function(){ st.p = (st.p + 1) % CS.PALETTE.length; renderStatusList(); };
+
+      var input = document.createElement('input');
+      input.type = 'text'; input.className = 'status-input';
+      input.value = st.name; input.maxLength = 6; input.placeholder = '名称';
+      input.addEventListener('input', function(){ st.name = input.value; });
+
+      var del = document.createElement('button');
+      del.type = 'button'; del.className = 'status-del'; del.textContent = '×';
+      del.onclick = function(){
+        if(tempStatuses.length <= 1){ alert('至少保留 1 个标记'); return; }
+        tempStatuses.splice(idx, 1); renderStatusList();
+      };
+
+      row.appendChild(swatch); row.appendChild(input); row.appendChild(del);
+      wrap.appendChild(row);
+    });
+  }
+
+  document.getElementById('editStatusBtn').onclick = function(){
+    tempStatuses = statuses.map(function(s){ return { name:s.name, p:s.p }; });
+    renderStatusList();
+    statusOverlay.hidden = false;
+  };
+
+  document.getElementById('statusAdd').onclick = function(){
+    if(tempStatuses.length >= 8){ alert('最多 8 个标记'); return; }
+    tempStatuses.push({ name:'新标记', p: tempStatuses.length % CS.PALETTE.length });
+    renderStatusList();
+  };
+
+  document.getElementById('statusCancel').onclick = function(){
+    statusOverlay.hidden = true; tempStatuses = null;
+  };
+  statusOverlay.addEventListener('mousedown', function(e){
+    if(e.target === statusOverlay){ statusOverlay.hidden = true; tempStatuses = null; }
+  });
+
+  document.getElementById('statusSave').onclick = function(){
+    if(!tempStatuses) return;
+    var names = tempStatuses.map(function(s){ return (s.name||'').trim(); });
+    for(var i=0;i<names.length;i++){
+      if(!names[i]){ alert('标记名称不能为空'); return; }
+      if(names.indexOf(names[i]) !== i){ alert('标记名称不能重复'); return; }
+    }
+    /* 迁移旧名称 */
+    var oldToNew = {};
+    statuses.forEach(function(old, i){
+      var nt = tempStatuses[i];
+      if(nt) oldToNew[old.name] = nt.name.trim();
+    });
+    Object.keys(marks).forEach(function(key){
+      var oldName = marks[key];
+      if(oldToNew[oldName]) marks[key] = oldToNew[oldName];
+      else if(names.indexOf(oldName) < 0) delete marks[key];
+    });
+    statuses = tempStatuses.map(function(s){ return { name:(s.name||'').trim(), p:s.p }; });
+    c.statuses = statuses;
+    c.marks = marks;
+    CS.markDirty(d);
+    statusOverlay.hidden = true;
+    tempStatuses = null;
+    renderCal();
+  };
+
+  renderCal();
+})();
+</script>
+</body>
+</html>

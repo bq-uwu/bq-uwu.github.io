@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>作品</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-page="works">
+<div class="nav">
+  <a href="index.html" data-page="home">首页</a>
+  <a href="commission.html" data-page="commission">约稿条</a>
+  <a href="works.html" data-page="works">作品</a>
+  <a href="game.html" data-page="game">正在做游戏</a>
+  <a href="about.html" data-page="about">关于我</a>
+</div>
+
+<div class="page">
+  <div class="card">
+    <div class="body" style="padding-bottom:0">
+      <h2 class="sec-title"><i class="bar"></i><span id="worksTitle" contenteditable="true">作品展示</span></h2>
+    </div>
+    <div class="works-cat-nav" id="worksCatNav"></div>
+    <div class="works-grid" id="worksGrid"></div>
+  </div>
+</div>
+
+<button class="save-data-btn" id="saveDataBtn">💾 保存到 data.js</button>
+<div class="save-badge" id="saveBadge">已自动保存</div>
+
+<script src="data.js"></script>
+<script src="common.js"></script>
+<script>
+(function(){
+  var d = CS.getData();
+  CS.initEditable(d);
+  CS.initNav();
+  CS.initSaveButton();
+
+  var w = d.works;
+  w.categories = w.categories || [];
+  var activeCat = 0;
+
+  var title = document.getElementById('worksTitle');
+  title.textContent = w.title || '作品展示';
+  if(CS.editable){
+    title.addEventListener('blur', function(){ w.title = CS.txt(title); CS.markDirty(d); });
+  }
+
+  function renderCatNav(){
+    var wrap = document.getElementById('worksCatNav');
+    wrap.innerHTML = '';
+    w.categories.forEach(function(cat, i){
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'works-cat-btn';
+      btn.textContent = cat.name || ('分类 ' + (i+1));
+      if(i === activeCat) btn.classList.add('active');
+      btn.onclick = function(){ activeCat = i; renderCatNav(); renderGrid(); };
+      if(CS.editable){
+        btn.addEventListener('dblclick', function(e){
+          e.stopPropagation();
+          var newName = prompt('重命名分类', cat.name || '');
+          if(newName === null) return;
+          cat.name = newName.trim() || cat.name;
+          CS.markDirty(d);
+          renderCatNav(); renderGrid();
+        });
+        var del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'cat-del'; del.textContent = '×';
+        del.onclick = function(e){
+          e.stopPropagation();
+          if(w.categories.length <= 1){ alert('至少保留 1 个分类'); return; }
+          if(!confirm('删除分类「' + (cat.name || '') + '」？里面的图片也会一起删除。')) return;
+          w.categories.splice(i, 1);
+          if(activeCat >= w.categories.length) activeCat = w.categories.length - 1;
+          CS.markDirty(d);
+          renderCatNav(); renderGrid();
+        };
+        btn.appendChild(del);
+      }
+      wrap.appendChild(btn);
+    });
+    if(CS.editable){
+      var addCat = document.createElement('button');
+      addCat.type = 'button';
+      addCat.className = 'works-add-cat';
+      addCat.textContent = '＋ 添加分类';
+      addCat.onclick = function(){
+        var name = prompt('新分类名称', '新分类');
+        if(name === null) return;
+        w.categories.push({ name: name.trim() || '新分类', images: [] });
+        activeCat = w.categories.length - 1;
+        CS.markDirty(d);
+        renderCatNav(); renderGrid();
+      };
+      wrap.appendChild(addCat);
+    }
+  }
+
+  function renderGrid(){
+    var grid = document.getElementById('worksGrid');
+    grid.innerHTML = '';
+    var cat = w.categories[activeCat];
+    if(!cat) return;
+    cat.images = cat.images || [];
+
+    cat.images.forEach(function(src, i){
+      var item = document.createElement('div');
+      item.className = 'work-item';
+      var img = document.createElement('img');
+      img.src = src;
+      img.onclick = function(){
+        CS.openViewer(cat.images, i, {
+          editable: CS.editable,
+          cropRule: {aspect:4/3,outW:800,outH:600,quality:.84},
+          onChange: function(newImgs){ cat.images = newImgs.slice(); CS.markDirty(d); renderGrid(); }
+        });
+      };
+      item.appendChild(img);
+      if(CS.editable){
+        var del = document.createElement('button');
+        del.className = 'del'; del.textContent = '×';
+        del.onclick = function(e){
+          e.stopPropagation();
+          cat.images.splice(i, 1);
+          CS.markDirty(d); renderGrid();
+        };
+        item.appendChild(del);
+      }
+      grid.appendChild(item);
+    });
+
+    if(CS.editable){
+      var add = document.createElement('button');
+      add.className = 'work-item add';
+      add.textContent = '＋';
+      add.onclick = function(){
+        CS.pickAndCrop({aspect:4/3,outW:800,outH:600,quality:.84}).then(function(data){
+          if(!data) return;
+          cat.images.push(data);
+          CS.markDirty(d); renderGrid();
+        });
+      };
+      grid.appendChild(add);
+    }
+  }
+
+  renderCatNav();
+  renderGrid();
+})();
+</script>
+</body>
+</html>

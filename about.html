@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>关于我</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-page="about">
+<div class="nav">
+  <a href="index.html" data-page="home">首页</a>
+  <a href="commission.html" data-page="commission">约稿条</a>
+  <a href="works.html" data-page="works">作品</a>
+  <a href="game.html" data-page="game">正在做游戏</a>
+  <a href="about.html" data-page="about">关于我</a>
+</div>
+
+<div class="page">
+  <div class="card">
+    <div class="body" style="padding-bottom:0">
+      <h2 class="sec-title"><i class="bar"></i><span id="aboutTitle" contenteditable="true">关于我</span></h2>
+    </div>
+    <div class="about-body" id="aboutContent" contenteditable="true"></div>
+  </div>
+</div>
+
+<button class="save-data-btn" id="saveDataBtn">💾 保存到 data.js</button>
+<div class="save-badge" id="saveBadge">已自动保存</div>
+
+<script src="data.js"></script>
+<script src="common.js"></script>
+<script>
+(function(){
+  var d = CS.getData();
+  CS.initEditable(d);
+  CS.initNav();
+  CS.initSaveButton();
+
+  var a = d.about;
+  var title = document.getElementById('aboutTitle');
+  var content = document.getElementById('aboutContent');
+
+  title.textContent = a.title || '关于我';
+  content.textContent = a.content || '';
+
+  if(CS.editable){
+    title.addEventListener('blur', function(){ a.title = CS.txt(title); CS.markDirty(d); });
+    content.addEventListener('blur', function(){ a.content = content.innerText; CS.markDirty(d); });
+  }
+})();
+</script>
+</body>
+</html>
